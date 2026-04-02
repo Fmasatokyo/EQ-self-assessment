@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Goleman EQ 自己評価</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', 'Hiragino Sans', 'Yu Gothic UI', Arial, sans-serif; background: #f5f5f5; color: #333; }
+  .container { max-width: 700px; margin: 0 auto; padding: 16px; }
+  h1 { color: #1a5276; font-size: 1.5rem; margin-bottom: 8px; }
+  .instructions { font-size: 0.9rem; color: #555; margin-bottom: 20px; line-height: 1.6; }
+
+  .section-header {
+    background: #e67e22;
+    color: white;
+    font-weight: bold;
+    font-size: 0.95rem;
+    padding: 8px 12px;
+    margin: 20px 0 0 0;
+    border-radius: 4px 4px 0 0;
+  }
+
+  .competency-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-top: none;
+    padding: 14px 12px;
+  }
+  .competency-card:last-of-type { border-radius: 0 0 4px 4px; margin-bottom: 4px; }
+
+  .comp-name { font-weight: bold; font-size: 0.95rem; }
+  .comp-desc { font-size: 0.82rem; color: #666; margin: 4px 0 12px 0; line-height: 1.5; }
+
+  .rating-group {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .rating-group label {
+    flex: 1;
+    min-width: 60px;
+    text-align: center;
+    cursor: pointer;
+  }
+  .rating-group input[type="radio"] { display: none; }
+  .rating-group .btn {
+    display: block;
+    padding: 6px 4px;
+    border: 2px solid #ccc;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    background: #fafafa;
+    transition: all 0.15s;
+    user-select: none;
+    line-height: 1.4;
+  }
+  .rating-group input[type="radio"]:checked + .btn {
+    background: #e67e22;
+    border-color: #e67e22;
+    color: white;
+    font-weight: bold;
+  }
+  .rating-group label:hover .btn { border-color: #e67e22; }
+
+  .submit-btn {
+    display: block;
+    width: 100%;
+    margin: 24px 0;
+    padding: 14px;
+    background: #1a5276;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .submit-btn:hover { background: #154360; }
+
+  #results { display: none; }
+  .result-section { margin-bottom: 20px; }
+  .result-section h3 { color: #e67e22; font-size: 1rem; margin-bottom: 10px; border-bottom: 2px solid #e67e22; padding-bottom: 4px; }
+  .result-row { display: flex; align-items: center; margin-bottom: 8px; gap: 10px; }
+  .result-label { font-size: 0.85rem; width: 160px; flex-shrink: 0; }
+  .bar-wrap { flex: 1; background: #eee; border-radius: 4px; height: 18px; }
+  .bar { height: 18px; border-radius: 4px; background: #e67e22; transition: width 0.5s; }
+  .result-score { font-size: 0.85rem; font-weight: bold; width: 90px; text-align: right; flex-shrink: 0; }
+  .score-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: #999; margin-top: 2px; }
+
+  .back-btn {
+    display: inline-block;
+    margin: 10px 0 20px 0;
+    padding: 8px 18px;
+    background: #555;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .error-msg { color: red; font-size: 0.85rem; margin: 8px 0; display: none; }
+
+  @media (max-width: 480px) {
+    .result-label { width: 120px; font-size: 0.78rem; }
+    .result-score { width: 70px; font-size: 0.78rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div id="surveySection">
+    <h1>Goleman EQ 自己評価</h1>
+    <p class="instructions"><strong>記入方法</strong>：この自己評価では、あなた自身がそれぞれの能力をどの程度発揮しているかを評価してください。例えば、「私は適応力を[全くない／めったにない／時々／など]発揮していると気づきます」のように記入してください。</p>
+
+    <form id="eqForm">
+      <div id="questions"></div>
+      <p class="error-msg" id="errorMsg">⚠ すべての質問に回答してから送信してください。</p>
+      <button type="submit" class="submit-btn">送信して結果を見る</button>
+    </form>
+  </div>
+
+  <div id="results">
+    <h1>あなたのEQ結果</h1>
+    <p style="font-size:0.85rem;color:#555;margin:8px 0 20px;">スコア：1=全くない、2=めったにない、3=時々、4=よくある、5=常に</p>
+    <div id="resultContent"></div>
+    <button class="back-btn" onclick="resetSurvey()">← もう一度回答する</button>
+  </div>
+
+</div>
+
+<script>
+const RATINGS = ['全くない', 'めったにない', '時々', 'よくある', '常に'];
+
+const SECTIONS = [
+  {
+    name: '自己認識 (Self-Awareness)',
+    items: [
+      { id: 'esa', name: '感情の自己認識', desc: '自分自身の感情と、それがパフォーマンスに与える影響を理解する能力。' }
+    ]
+  },
+  {
+    name: '自己管理 (Self-Management)',
+    items: [
+      { id: 'ao', name: '達成志向', desc: '卓越した水準に達するか、それを上回ることを目指す。物事をよりよくする方法を探索し、困難な目標を設定し、計算されたリスクを取ること。' },
+      { id: 'ad', name: '適応力', desc: '変化に対して柔軟に対応し、複数の要求を巧みに処理し、アイデアやアプローチを適応させること。' },
+      { id: 'eb', name: '感情的均衡', desc: '混乱の種となる感情や衝動をコントロールし、ストレスの多い状況や敵対的な環境下でも効率を維持する能力。' },
+      { id: 'po', name: '前向きな姿勢', desc: '人々、状況、出来事の良い面を見る能力、そして障害や挫折があっても目標達成に向けて持続する力。' }
+    ]
+  },
+  {
+    name: '社会的認識 (Social Awareness)',
+    items: [
+      { id: 'em', name: '共感力', desc: '他者の感情や視点を感じ取り、積極的に彼らの懸念に関心を払い、感じられていること・考えられていることの手がかりを捉える能力。' },
+      { id: 'oa', name: '組織認識', desc: 'グループの感情の流れと権力関係を読み取り、影響力のある人物、ネットワーク、ダイナミクスを特定する能力。' }
+    ]
+  },
+  {
+    name: '対人関係管理 (Relationship Management)',
+    items: [
+      { id: 'cm',  name: '対立管理', desc: '感情的または緊張した状況で他者を助け、上手に意見の不一致を表面化させ、全員が納得できる解決策を見出す能力。' },
+      { id: 'cnm', name: 'コーチングとメンタリング', desc: 'フィードバックと支援を通じて、他者の長期的な学習や成長を促進する能力。' },
+      { id: 'inf', name: '影響力', desc: '他者に好ましい影響を与え、支持を得るために説得したり納得させたりする能力。' },
+      { id: 'il',  name: 'インスピレーショナル・リーダーシップ', desc: '個人やグループを仕事に動機づけ、導き、最良を引き出す能力。' },
+      { id: 'tw',  name: 'チームワーク', desc: '共有の目標に向けて他者と協力する能力。積極的に参加し、責任と報酬を分かち合い、チームの能力に貢献する。' }
+    ]
+  }
+];
+
+function buildForm() {
+  const container = document.getElementById('questions');
+  SECTIONS.forEach(section => {
+    const header = document.createElement('div');
+    header.className = 'section-header';
+    header.textContent = section.name;
+    container.appendChild(header);
+
+    section.items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'competency-card';
+      card.innerHTML = `
+        <div class="comp-name">${item.name}</div>
+        <div class="comp-desc">${item.desc}</div>
+        <div class="rating-group">
+          ${RATINGS.map((r, i) => `
+            <label>
+              <input type="radio" name="${item.id}" value="${i+1}" required>
+              <span class="btn">${r}</span>
+            </label>
+          `).join('')}
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  });
+}
+
+function buildResults(scores) {
+  const content = document.getElementById('resultContent');
+  content.innerHTML = '';
+  SECTIONS.forEach(section => {
+    const div = document.createElement('div');
+    div.className = 'result-section';
+    div.innerHTML = `<h3>${section.name}</h3>`;
+    section.items.forEach(item => {
+      const score = scores[item.id];
+      const pct = ((score - 1) / 4) * 100;
+      const label = RATINGS[score - 1];
+      div.innerHTML += `
+        <div class="result-row">
+          <div class="result-label">${item.name}</div>
+          <div style="flex:1">
+            <div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div>
+            <div class="score-labels"><span>全くない</span><span>常に</span></div>
+          </div>
+          <div class="result-score">${label} (${score})</div>
+        </div>
+      `;
+    });
+    content.appendChild(div);
+  });
+}
+
+document.getElementById('eqForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const scores = {};
+  let allAnswered = true;
+  SECTIONS.forEach(section => {
+    section.items.forEach(item => {
+      const val = document.querySelector(`input[name="${item.id}"]:checked`);
+      if (!val) { allAnswered = false; }
+      else { scores[item.id] = parseInt(val.value); }
+    });
+  });
+  if (!allAnswered) {
+    document.getElementById('errorMsg').style.display = 'block';
+    return;
+  }
+  document.getElementById('errorMsg').style.display = 'none';
+  localStorage.setItem('eq_scores_jp', JSON.stringify(scores));
+  localStorage.setItem('eq_date_jp', new Date().toLocaleString('ja-JP'));
+  showResults(scores);
+});
+
+function showResults(scores) {
+  document.getElementById('surveySection').style.display = 'none';
+  document.getElementById('results').style.display = 'block';
+  buildResults(scores);
+  window.scrollTo(0, 0);
+}
+
+function resetSurvey() {
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('surveySection').style.display = 'block';
+  document.getElementById('eqForm').reset();
+  window.scrollTo(0, 0);
+}
+
+function init() {
+  buildForm();
+  const saved = localStorage.getItem('eq_scores_jp');
+  if (saved) {
+    const scores = JSON.parse(saved);
+    const date = localStorage.getItem('eq_date_jp') || '';
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#d5f5e3;border:1px solid #27ae60;border-radius:6px;padding:10px 14px;margin-bottom:16px;font-size:0.85rem;';
+    banner.innerHTML = `✅ 以前の回答があります（${date}）。<a href="#" onclick="showSavedResults(event)" style="color:#1a5276;font-weight:bold;">結果を見る</a>`;
+    document.getElementById('surveySection').prepend(banner);
+    window._savedScores = scores;
+  }
+}
+
+function showSavedResults(e) {
+  e.preventDefault();
+  showResults(window._savedScores);
+}
+
+init();
+</script>
+</body>
+</html>
